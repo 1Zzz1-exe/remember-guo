@@ -523,9 +523,8 @@
       musicToggle.classList.remove('playing');
       musicToggle.title = '播放音乐';
     } else {
-      bgm.play().catch(() => {
-        // 如果音频文件不存在，静默失败
-      });
+      bgm.currentTime = 65;
+      bgm.play().catch(() => {});
       musicToggle.classList.add('playing');
       musicToggle.title = '暂停音乐';
     }
