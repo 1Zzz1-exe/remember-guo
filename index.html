@@ -516,19 +516,39 @@
   const bgm = document.getElementById('bgm');
   const musicToggle = document.getElementById('musicToggle');
   let musicPlaying = false;
+  let audioReady = false;
+
+  bgm.addEventListener('loadedmetadata', function() {
+    audioReady = true;
+  });
+
+  bgm.addEventListener('error', function() {
+    console.log('音频加载失败，请检查文件格式');
+  });
 
   function toggleMusic() {
     if (musicPlaying) {
       bgm.pause();
       musicToggle.classList.remove('playing');
       musicToggle.title = '播放音乐';
+      musicPlaying = false;
     } else {
+      if (!audioReady) {
+        bgm.load();
+      }
       bgm.currentTime = 65;
-      bgm.play().catch(() => {});
-      musicToggle.classList.add('playing');
-      musicToggle.title = '暂停音乐';
+      var promise = bgm.play();
+      if (promise !== undefined) {
+        promise.then(function() {
+          musicToggle.classList.add('playing');
+          musicToggle.title = '暂停音乐';
+          musicPlaying = true;
+        }).catch(function(e) {
+          console.log('播放失败: ' + e.message);
+          alert('音乐播放失败，可能是浏览器不支持此音频格式。请尝试将音频转换为 MP3 格式。');
+        });
+      }
     }
-    musicPlaying = !musicPlaying;
   }
 
   // ===== Lightbox =====
