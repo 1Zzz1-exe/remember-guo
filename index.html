@@ -781,15 +781,16 @@ body {
 </section>
 
 <!-- ==================== 浮层 ==================== -->
-<!-- 关系添加 -->
+<!-- 关系添加/编辑 -->
 <div class="modal-overlay" id="relModal">
   <div class="modal-box">
     <button class="modal-close" onclick="closeRelModal()">&times;</button>
-    <h3>添加关系</h3>
+    <h3 id="relModalTitle">添加关系</h3>
     <input type="text" id="relName" placeholder="姓名" maxlength="20">
     <input type="text" id="relRelation" placeholder="关系（如：同桌、好友、老师）" maxlength="30">
     <input type="text" id="relAuthor" placeholder="你的名字" maxlength="20">
-    <button onclick="submitRelation()">确认添加</button>
+    <button onclick="submitRelation()" id="relSubmitBtn">确认添加</button>
+    <input type="hidden" id="relEditId">
   </div>
 </div>
 
@@ -1380,9 +1381,16 @@ function loadRelations() {
         node.setAttribute('data-name', name);
         node.style.left = (pos.x - 50) + 'px';
         node.style.top = (pos.y - 22) + 'px';
-        var rel = data.find(function(d) { return d.name === name; });
+        var rels = data.filter(function(d) { return d.name === name || d.person === name; });
+        // 缓存 relation 数据供编辑用
+        rels.forEach(function(rl) { window['_rel_' + rl.id] = rl; });
         node.innerHTML = '<div class="rn-name">' + esc(name) + '</div>' +
-          (isAdmin && rel ? '<button class="admin-delete" style="display:inline" onclick="event.stopPropagation();adminDelete(\'relations\',\'' + rel.id + '\',loadRelations)">删除</button>' : '');
+          (isAdmin && rels.length > 0 ? '<div style="margin-top:2px;display:' + (isAdmin?'block':'none') + '">' +
+            rels.map(function(rl) {
+              return '<span style="font-size:10px;color:var(--text-light);margin-right:4px;">' + esc(rl.relation) + '</span>' +
+                '<button class="admin-delete" style="display:inline;font-size:10px;" onclick="event.stopPropagation();adminDelete(\'relations\',\'' + rl.id + '\',loadRelations)">删</button>' +
+                '<button style="display:inline;font-size:10px;background:none;border:none;color:var(--blue);cursor:pointer;font-family:inherit;letter-spacing:1px;" onclick="event.stopPropagation();openRelEdit(\'' + rl.id + '\')">改</button>';
+            }).join('') + '</div>' : '');
         node.onclick = function() { selectNode(name); };
         wrap.appendChild(node);
       });
@@ -1437,6 +1445,12 @@ function applyHighlight(name) {
   });
 }
 function openRelModal() {
+  document.getElementById('relModalTitle').textContent = '添加关系';
+  document.getElementById('relSubmitBtn').textContent = '确认添加';
+  document.getElementById('relEditId').value = '';
+  document.getElementById('relName').value = '';
+  document.getElementById('relRelation').value = '';
+  document.getElementById('relAuthor').value = '';
   document.getElementById('relModal').classList.add('active');
   document.body.style.overflow = 'hidden';
 }
@@ -1444,22 +1458,43 @@ function closeRelModal() {
   document.getElementById('relModal').classList.remove('active');
   document.body.style.overflow = '';
 }
+function openRelEdit(id) {
+  var rel = window['_rel_' + id];
+  if (!rel) return;
+  document.getElementById('relModalTitle').textContent = '编辑关系';
+  document.getElementById('relSubmitBtn').textContent = '保存修改';
+  document.getElementById('relEditId').value = id;
+  document.getElementById('relName').value = rel.name;
+  document.getElementById('relRelation').value = rel.relation;
+  document.getElementById('relAuthor').value = rel.author || '';
+  document.getElementById('relModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
 function submitRelation() {
+  var editId = document.getElementById('relEditId').value;
   var name = document.getElementById('relName').value.trim();
   var relation = document.getElementById('relRelation').value.trim();
   var author = document.getElementById('relAuthor').value.trim();
   if (!name || !relation) { alert('请填写姓名和关系'); return; }
-  var person = relSelectedNode || '郭茂润';
-  sb.from('relations').insert([
-    { name: name, relation: relation, author: author || '匿名', person: person }
-  ]).then(function(r) {
-    if (r.error) { alert('提交失败，请重试'); return; }
-    closeRelModal();
-    loadRelations();
-    document.getElementById('relName').value = '';
-    document.getElementById('relRelation').value = '';
-    document.getElementById('relAuthor').value = '';
-  });
+  if (editId) {
+    // 编辑模式
+    sb.from('relations').update({ name: name, relation: relation, author: author || '匿名' }).eq('id', editId)
+      .then(function(r) {
+        if (r.error) { alert('保存失败，请重试'); return; }
+        closeRelModal();
+        loadRelations();
+      });
+  } else {
+    // 新增模式
+    var person = relSelectedNode || '郭茂润';
+    sb.from('relations').insert([
+      { name: name, relation: relation, author: author || '匿名', person: person }
+    ]).then(function(r) {
+      if (r.error) { alert('提交失败，请重试'); return; }
+      closeRelModal();
+      loadRelations();
+    });
+  }
 }
 loadRelations();
 
