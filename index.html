@@ -272,6 +272,14 @@ body {
   transition:all 0.3s; font-family:inherit;
 }
 .add-voice-btn:hover { background:var(--blue-pale); border-color:var(--blue); }
+.add-letter-btn {
+  display:block; margin:0 auto 48px;
+  background:transparent; border:2px dashed var(--gold-light);
+  color:var(--gold); padding:12px 28px; border-radius:8px;
+  cursor:pointer; font-size:14px; letter-spacing:4px;
+  transition:all 0.3s; font-family:inherit;
+}
+.add-letter-btn:hover { background:rgba(184,147,90,0.06); border-color:var(--gold); }
 
 /* ========================================
    第四章 · 鸿雁
@@ -573,35 +581,10 @@ body {
   <div class="chapter-label">第 四 章</div>
   <div class="chapter-title">鸿 雁</div>
   <div class="ch4-inner">
-    <div class="letter">
-      <div class="letter-title">唐多令 · 梦游华美楼</div>
-      <div class="letter-body">假草满平洲，漯河绕沙流。
-一年重入华美楼。
-摩托停蹄犹未稳，须臾过，又一五。
-
-风雨篮边头，故人曾往否？
-满目红楼是新愁。
-欲呼"躁起"同载游，终不似，郭郎勇。</div>
-      <div class="letter-author">—— 同学赠诗</div>
+    <div id="lettersList">
+      <div class="loading" id="ltLoading">正在加载...</div>
     </div>
-    <div class="letter reveal">
-      <div class="letter-title">致同窗兄</div>
-      <div class="letter-body">观兄此文，情真意切，自省谦厚，余为之动容，涕泗横流，洒泪述下文。
-
-余昨日一时言语失度，实为玩笑之语，未必真存芥蒂。
-然事后细想，捶胸顿足，深谙余错。
-反躬自省者当为余，何以责兄。
-
-然兄既反躬自省，足见胸襟坦荡，
-万望不念旧嫌，恕弟之过，重修旧好。
-自问不才，难承兄文末之美。
-
-友道贵在相识相谅，
-余与兄六年同窗，偶有隙末，
-何忍就此疏别？</div>
-      <div class="letter-author">—— 郭茂润 致同窗</div>
-      <span class="seal">茂<br>润</span>
-    </div>
+    <button class="add-letter-btn" onclick="openLetterModal()">+ 添加书信或诗句</button>
     <div class="chat-section reveal">
       <h3>群聊里的我们</h3>
       <div class="chat-grid" id="chatGrid">
@@ -652,6 +635,18 @@ body {
 </section>
 
 <!-- ==================== 浮层 ==================== -->
+<!-- 书信添加 -->
+<div class="modal-overlay" id="letterModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeLetterModal()">&times;</button>
+    <h3>添加书信或诗句</h3>
+    <input type="text" id="ltTitle" placeholder="标题" maxlength="50">
+    <textarea id="ltBody" placeholder="正文" maxlength="1000" style="min-height:160px"></textarea>
+    <input type="text" id="ltAuthor" placeholder="署名" maxlength="30">
+    <button onclick="submitLetter()">确认添加</button>
+  </div>
+</div>
+
 <!-- 语录添加 -->
 <div class="modal-overlay" id="voiceModal">
   <div class="modal-box">
@@ -955,6 +950,59 @@ function submitVoice() {
   });
 }
 loadVoiceQuotes();
+
+/* ========================================
+   书信加载与提交
+   ======================================== */
+function loadLetters() {
+  sb.from('letters').select('*').order('created_at', { ascending: false })
+    .then(function(r) {
+      if (r.error) { document.getElementById('ltLoading').textContent = '加载失败'; return; }
+      var data = r.data || [];
+      if (data.length === 0) {
+        document.getElementById('ltLoading').textContent = '';
+        return;
+      }
+      document.getElementById('ltLoading').style.display = 'none';
+      var html = '';
+      data.forEach(function(l, i) {
+        html += '<div class="letter reveal">';
+        html += '<div class="letter-title">' + esc(l.title) + '</div>';
+        html += '<div class="letter-body">' + esc(l.body) + '</div>';
+        html += '<div class="letter-author">—— ' + esc(l.author || '匿名') + '</div>';
+        if (i === data.length - 1) html += '<span class="seal">茂<br>润</span>';
+        html += '</div>';
+      });
+      document.getElementById('lettersList').innerHTML = html;
+      // 重新触发 reveal 动画
+      document.querySelectorAll('#lettersList .reveal').forEach(function(el) { observer.observe(el); });
+    });
+}
+function openLetterModal() {
+  document.getElementById('letterModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function closeLetterModal() {
+  document.getElementById('letterModal').classList.remove('active');
+  document.body.style.overflow = '';
+}
+function submitLetter() {
+  var title = document.getElementById('ltTitle').value.trim();
+  var body = document.getElementById('ltBody').value.trim();
+  var author = document.getElementById('ltAuthor').value.trim();
+  if (!title || !body) { alert('请填写标题和正文'); return; }
+  sb.from('letters').insert([
+    { title: title, body: body, author: author || '匿名' }
+  ]).then(function(r) {
+    if (r.error) { alert('提交失败，请重试'); return; }
+    closeLetterModal();
+    loadLetters();
+    document.getElementById('ltTitle').value = '';
+    document.getElementById('ltBody').value = '';
+    document.getElementById('ltAuthor').value = '';
+  });
+}
+loadLetters();
 
 /* ========================================
    纪念日历
