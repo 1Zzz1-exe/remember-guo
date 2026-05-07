@@ -231,6 +231,35 @@ body {
 .gallery-item:hover { transform:translateY(-4px); box-shadow:0 10px 28px rgba(0,0,0,0.14); }
 .gallery-item img { width:100%; height:100%; object-fit:cover; display:block; }
 
+/* 用户上传照片区 */
+.user-photos-section { margin-top:56px; }
+.user-photos-title {
+  font-family:'Noto Serif SC', serif;
+  font-size:16px; color:var(--gold); text-align:center;
+  letter-spacing:4px; margin-bottom:24px;
+}
+.user-photos-grid { display:flex; flex-direction:column; gap:16px; max-width:640px; margin:0 auto; }
+.up-card {
+  display:flex; gap:16px; background:var(--white);
+  border-radius:8px; padding:16px;
+  box-shadow:0 2px 12px rgba(0,0,0,0.04);
+  align-items:flex-start; transition:transform 0.3s;
+}
+.up-card:hover { transform:translateX(4px); }
+.up-card img { width:120px; height:120px; object-fit:cover; border-radius:6px; flex-shrink:0; }
+.up-card-body { flex:1; }
+.up-card-text { font-size:14px; line-height:1.8; color:var(--text); margin-bottom:6px; }
+.up-card-author { font-size:12px; color:var(--blue); letter-spacing:2px; }
+.up-card-time { font-size:11px; color:var(--text-light); }
+.add-photo-btn {
+  display:block; margin:28px auto 0;
+  background:transparent; border:2px dashed var(--blue-light);
+  color:var(--blue); padding:14px 32px; border-radius:8px;
+  cursor:pointer; font-size:15px; letter-spacing:4px;
+  transition:all 0.3s; font-family:inherit;
+}
+.add-photo-btn:hover { background:var(--blue-pale); border-color:var(--blue); }
+
 /* ========================================
    第四章 · 鸿雁
    ======================================== */
@@ -517,6 +546,13 @@ body {
     <div class="voice-card"><div class="qt">以绝望挥剑，着逝者为铠</div><div class="by">你念这句台词时，眼睛里全是光</div></div>
   </div>
   <div class="gallery" id="gallery"></div>
+  <div class="user-photos-section">
+    <h3 class="user-photos-title">同 学 们 的 回 忆</h3>
+    <div class="user-photos-grid" id="userPhotosGrid">
+      <div class="loading" id="upLoading">正在加载...</div>
+    </div>
+    <button class="add-photo-btn" onclick="openPhotoModal()">+ 添加照片与回忆</button>
+  </div>
 </section>
 
 <!-- ==================== 第四章 · 鸿雁 ==================== -->
@@ -603,6 +639,18 @@ body {
 </section>
 
 <!-- ==================== 浮层 ==================== -->
+<!-- 照片添加 -->
+<div class="modal-overlay" id="photoModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closePhotoModal()">&times;</button>
+    <h3>添加照片与回忆</h3>
+    <input type="text" id="upImageUrl" placeholder="图片链接（把图片上传到图床，粘贴链接）" maxlength="500">
+    <textarea id="upText" placeholder="写一段回忆或想说的话..." maxlength="300"></textarea>
+    <input type="text" id="upAuthor" placeholder="你的名字" maxlength="20">
+    <button onclick="submitUserPhoto()">确认添加</button>
+  </div>
+</div>
+
 <!-- 事件添加 -->
 <div class="modal-overlay" id="eventModal">
   <div class="modal-box">
@@ -766,6 +814,60 @@ function submitAnnotation() {
   });
 }
 function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+/* ========================================
+   用户上传照片 + 回忆
+   ======================================== */
+function loadUserPhotos() {
+  sb.from('user_photos').select('*').order('created_at', { ascending: false })
+    .then(function(r) {
+      if (r.error) { document.getElementById('upLoading').textContent = '加载失败'; return; }
+      var data = r.data || [];
+      if (data.length === 0) {
+        document.getElementById('upLoading').textContent = '还没有人添加照片，来分享第一张回忆吧';
+        return;
+      }
+      document.getElementById('upLoading').style.display = 'none';
+      var html = '';
+      data.forEach(function(p) {
+        var t = new Date(p.created_at);
+        var ts = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
+        html += '<div class="up-card">';
+        html += '<img src="' + esc(p.image_url) + '" alt="" loading="lazy" onerror="this.parentElement.style.opacity=0.3">';
+        html += '<div class="up-card-body">';
+        html += '<div class="up-card-text">' + esc(p.text) + '</div>';
+        html += '<div class="up-card-author">—— ' + esc(p.author || '匿名') + '</div>';
+        html += '<div class="up-card-time">' + ts + '</div>';
+        html += '</div></div>';
+      });
+      document.getElementById('userPhotosGrid').innerHTML = html;
+    });
+}
+function openPhotoModal() {
+  document.getElementById('photoModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function closePhotoModal() {
+  document.getElementById('photoModal').classList.remove('active');
+  document.body.style.overflow = '';
+}
+function submitUserPhoto() {
+  var url = document.getElementById('upImageUrl').value.trim();
+  var text = document.getElementById('upText').value.trim();
+  var author = document.getElementById('upAuthor').value.trim();
+  if (!url || !text) { alert('请填写图片链接和回忆文字'); return; }
+  sb.from('user_photos').insert([
+    { image_url: url, text: text, author: author || '匿名' }
+  ]).then(function(r) {
+    if (r.error) { alert('提交失败，请重试'); return; }
+    closePhotoModal();
+    loadUserPhotos();
+    document.getElementById('upImageUrl').value = '';
+    document.getElementById('upText').value = '';
+    document.getElementById('upAuthor').value = '';
+  });
+}
+loadUserPhotos();
 
 /* ========================================
    纪念日历
