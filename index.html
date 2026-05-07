@@ -374,20 +374,18 @@ body {
   z-index:1; white-space:nowrap;
 }
 .rel-node:hover { transform:scale(1.06); box-shadow:0 4px 20px rgba(0,0,0,0.12); }
+.rel-node.selected { box-shadow:0 0 0 3px var(--blue), 0 4px 20px rgba(74,124,181,0.25); }
+.rel-node.dimmed { opacity:0.3; }
 .rel-node .rn-name { font-size:14px; font-weight:600; color:var(--deep); letter-spacing:2px; }
 .rel-node .rn-rel { font-size:11px; color:var(--blue); letter-spacing:1px; margin-top:2px; }
 .rel-line {
   position:absolute; top:0; left:0; width:100%; height:100%;
   pointer-events:none; z-index:0;
 }
-.rel-line line { stroke:var(--blue-light); stroke-width:1.5; stroke-dasharray:4 3; }
-.rel-focus-info { text-align:center; margin-bottom:8px; }
-.rel-focus-name { font-family:'Noto Serif SC',serif; font-size:14px; color:var(--deep); letter-spacing:2px; }
-.rel-back-btn {
-  display:inline-block; margin-top:4px; background:none; border:none;
-  color:var(--blue); cursor:pointer; font-size:12px; letter-spacing:2px;
-  font-family:inherit; text-decoration:underline;
-}
+.rel-line line { stroke:var(--blue-light); stroke-width:1.5; stroke-dasharray:4 3; transition:stroke 0.3s, stroke-width 0.3s, opacity 0.3s; }
+.rel-line line.highlighted { stroke:var(--blue); stroke-width:2.5; stroke-dasharray:none; }
+.rel-line line.dimmed { opacity:0.1; }
+.rel-focus-hint { text-align:center; font-size:12px; color:var(--text-light); letter-spacing:2px; margin-bottom:12px; }
 .add-rel-btn {
   display:block; margin:32px auto 0;
   background:transparent; border:2px dashed var(--blue-light);
@@ -732,10 +730,7 @@ body {
 <section class="ch3 reveal" id="ch5">
   <div class="chapter-label">第 五 章</div>
   <div class="chapter-title">故 人</div>
-  <div class="rel-focus-info" id="relFocusInfo" style="display:none">
-    <div class="rel-focus-name" id="relFocusName"></div>
-    <button class="rel-back-btn" onclick="focusRelation('郭茂润')">← 返回茂润</button>
-  </div>
+  <div class="rel-focus-hint">点击节点聚焦，再点取消</div>
   <div class="rel-wrap" id="relWrap">
     <svg class="rel-line" id="relSvg"></svg>
     <div class="rel-center-wrap" id="relCenterWrap">
@@ -1346,23 +1341,9 @@ loadLetters();
 /* ========================================
    关系网
    ======================================== */
-var relFocusPerson = '郭茂润';
-function focusRelation(person) {
-  relFocusPerson = person;
-  if (person === '郭茂润') {
-    document.getElementById('relCenter').innerHTML = '<img src="photos/01.jpg" alt="">';
-    document.getElementById('relCenterLabel').textContent = '郭茂润';
-    document.getElementById('relFocusInfo').style.display = 'none';
-  } else {
-    document.getElementById('relCenter').innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:Noto Serif SC,serif;font-size:20px;font-weight:700;color:var(--deep);">' + esc(person[0]) + '</div>';
-    document.getElementById('relCenterLabel').textContent = person;
-    document.getElementById('relFocusName').textContent = '正在查看：' + person;
-    document.getElementById('relFocusInfo').style.display = 'block';
-  }
-  loadRelations();
-}
+var relSelectedNode = null;
 function loadRelations() {
-  sb.from('relations').select('*').eq('person', relFocusPerson).order('created_at', { ascending: true })
+  sb.from('relations').select('*').order('created_at', { ascending: true })
     .then(function(r) {
       if (r.error) return;
       var data = r.data || [];
@@ -1373,29 +1354,89 @@ function loadRelations() {
       var cw = document.getElementById('relCenterWrap');
       cw.style.display = 'flex';
       if (data.length === 0) return;
-      var cx = 300, cy = 200, r = 150;
-      data.forEach(function(rel, i) {
-        var angle = (i / data.length) * Math.PI * 2 - Math.PI / 2;
-        var nx = cx + Math.cos(angle) * r - 50;
-        var ny = cy + Math.sin(angle) * r - 22;
+      // 收集所有人物
+      var allPeople = new Map();
+      allPeople.set('郭茂润', { x: 300, y: 200, isCenter: true });
+      data.forEach(function(rel) {
+        if (!allPeople.has(rel.person)) allPeople.set(rel.person, null);
+        if (!allPeople.has(rel.name)) allPeople.set(rel.name, null);
+      });
+      // 排序：郭茂润除外，其他人按字母
+      var others = [];
+      allPeople.forEach(function(v, k) { if (k !== '郭茂润') others.push(k); });
+      others.sort();
+      // 布局：郭茂润在中心，主环放 person，外环放 name
+      var innerRing = [], outerRing = [];
+      others.forEach(function(name) {
+        var isPerson = data.some(function(rel) { return rel.person === name; });
+        (isPerson ? innerRing : outerRing).push(name);
+      });
+      // 分配坐标
+      function assignPositions(list, cx, cy, radius) {
+        list.forEach(function(name, i) {
+          var angle = (i / list.length) * Math.PI * 2 - Math.PI / 2;
+          allPeople.set(name, { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius, isCenter: false });
+        });
+      }
+      assignPositions(innerRing, 300, 200, 130);
+      assignPositions(outerRing, 300, 200, 210);
+      // 渲染节点
+      allPeople.forEach(function(pos, name) {
+        if (name === '郭茂润') return; // 中心单独渲染
+        if (!pos) return;
         var node = document.createElement('div');
         node.className = 'rel-node';
-        node.style.left = nx + 'px';
-        node.style.top = ny + 'px';
-        node.innerHTML = '<div class="rn-name">' + esc(rel.name) + '</div>' +
-          '<div class="rn-rel">' + esc(rel.relation) + '</div>' +
-          (isAdmin ? '<button class="admin-delete" style="display:inline" onclick="event.stopPropagation();adminDelete(\'relations\',\'' + rel.id + '\',loadRelations)">删除</button>' : '');
-        node.onclick = function() { focusRelation(rel.name); };
+        node.setAttribute('data-name', name);
+        node.style.left = (pos.x - 50) + 'px';
+        node.style.top = (pos.y - 22) + 'px';
+        var rel = data.find(function(d) { return d.name === name && d.person === relSelectedNode; }) ||
+                   data.find(function(d) { return d.name === name; });
+        var relText = rel ? rel.relation : '';
+        node.innerHTML = '<div class="rn-name">' + esc(name) + '</div>' +
+          (relText ? '<div class="rn-rel">' + esc(relText) + '</div>' : '') +
+          (isAdmin && rel ? '<button class="admin-delete" style="display:inline" onclick="event.stopPropagation();adminDelete(\'relations\',\'' + rel.id + '\',loadRelations)">删除</button>' : '');
+        node.onclick = function() { selectNode(name); };
         wrap.appendChild(node);
-        var t1 = angleToXY(300, 200, angle, 45);
-        var t2 = angleToXY(300 + Math.cos(angle) * r, 200 + Math.sin(angle) * r, angle + Math.PI, 50);
-        svg.innerHTML += '<line x1="' + t1.x + '" y1="' + t1.y + '" x2="' + t2.x + '" y2="' + t2.y + '"/>';
+      });
+      // 渲染连线
+      data.forEach(function(rel) {
+        var from = allPeople.get(rel.person);
+        var to = allPeople.get(rel.name);
+        if (!from || !to) return;
+        svg.innerHTML += '<line data-from="' + esc(rel.person) + '" data-to="' + esc(rel.name) + '" x1="' + from.x + '" y1="' + from.y + '" x2="' + to.x + '" y2="' + to.y + '"/>';
       });
       svg.setAttribute('viewBox', '0 0 600 400');
+      if (relSelectedNode) applyHighlight(relSelectedNode);
     });
 }
-function angleToXY(cx, cy, angle, dist) {
-  return { x: cx + Math.cos(angle) * dist, y: cy + Math.sin(angle) * dist };
+function selectNode(name) {
+  if (relSelectedNode === name) {
+    relSelectedNode = null;
+    document.querySelectorAll('.rel-node').forEach(function(n) { n.classList.remove('selected','dimmed'); });
+    document.querySelectorAll('.rel-line line').forEach(function(l) { l.classList.remove('highlighted','dimmed'); });
+  } else {
+    relSelectedNode = name;
+    applyHighlight(name);
+  }
+}
+function applyHighlight(name) {
+  // 收集与选中节点相关的所有连线
+  var connected = new Set();
+  connected.add(name);
+  document.querySelectorAll('.rel-line line').forEach(function(l) {
+    var from = l.getAttribute('data-from');
+    var to = l.getAttribute('data-to');
+    var related = (from === name || to === name);
+    if (related) { l.classList.add('highlighted'); l.classList.remove('dimmed'); connected.add(from); connected.add(to); }
+    else { l.classList.remove('highlighted'); l.classList.add('dimmed'); }
+  });
+  document.querySelectorAll('.rel-node').forEach(function(n) {
+    var nodeName = n.getAttribute('data-name');
+    if (nodeName === name) n.classList.add('selected');
+    else n.classList.remove('selected');
+    if (connected.has(nodeName)) n.classList.remove('dimmed');
+    else n.classList.add('dimmed');
+  });
 }
 function openRelModal() {
   document.getElementById('relModal').classList.add('active');
@@ -1411,7 +1452,7 @@ function submitRelation() {
   var author = document.getElementById('relAuthor').value.trim();
   if (!name || !relation) { alert('请填写姓名和关系'); return; }
   sb.from('relations').insert([
-    { name: name, relation: relation, author: author || '匿名', person: relFocusPerson }
+    { name: name, relation: relation, author: author || '匿名', person: '郭茂润' }
   ]).then(function(r) {
     if (r.error) { alert('提交失败，请重试'); return; }
     closeRelModal();
