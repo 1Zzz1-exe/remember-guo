@@ -316,6 +316,33 @@ body {
 .reply-form { margin-top:8px; display:flex; gap:8px; }
 .reply-form input { flex:1; font-family:inherit; font-size:12px; padding:6px 10px; border:1px solid var(--blue-light); border-radius:4px; background:var(--white); outline:none; }
 .reply-form button { font-family:inherit; font-size:11px; background:var(--blue); color:#fff; border:none; padding:4px 12px; border-radius:4px; cursor:pointer; letter-spacing:1px; }
+
+/* 管理面板 */
+.admin-delete {
+  display:none; background:none; border:none; color:var(--red-seal);
+  cursor:pointer; font-size:11px; margin-left:8px; opacity:0.6;
+  font-family:inherit; letter-spacing:1px;
+}
+.admin-delete:hover { opacity:1; }
+.admin-entry {
+  position:fixed; bottom:28px; left:28px; z-index:1000;
+  background:var(--white); border:1px solid var(--blue-pale);
+  color:var(--text-light); font-size:10px; padding:4px 10px;
+  border-radius:12px; cursor:pointer; font-family:inherit; letter-spacing:1px;
+  opacity:0.4; transition:opacity 0.3s;
+}
+.admin-entry:hover { opacity:0.8; }
+.admin-bar {
+  display:none; position:fixed; top:0; left:0; right:0;
+  background:var(--deep); color:#fff; z-index:900;
+  padding:8px 20px; text-align:center; font-size:12px; letter-spacing:2px;
+}
+.admin-bar span { opacity:0.6; }
+.admin-bar button {
+  background:transparent; border:1px solid rgba(255,255,255,0.3);
+  color:#fff; padding:2px 12px; border-radius:10px; cursor:pointer;
+  font-size:11px; margin-left:8px; font-family:inherit; letter-spacing:1px;
+}
 .add-letter-btn {
   display:block; margin:0 auto 48px;
   background:transparent; border:2px dashed var(--gold-light);
@@ -775,6 +802,36 @@ const sb = supabase.createClient(SB_URL, SB_KEY);
 })();
 
 /* ========================================
+   管理面板
+   ======================================== */
+var isAdmin = false;
+function enterAdmin() {
+  var pw = prompt('请输入管理密码：');
+  if (pw !== 'gmr3344') { alert('密码错误'); return; }
+  isAdmin = true;
+  document.getElementById('adminBar').style.display = 'block';
+  document.getElementById('adminEntry').style.display = 'none';
+  document.querySelectorAll('.admin-delete').forEach(function(el) { el.style.display = 'inline'; });
+  // 重新渲染全部内容以显示删除按钮
+  loadVoiceQuotes(); loadUserPhotos(); loadLetters(); loadCalendar(); loadMessages();
+}
+function exitAdmin() {
+  isAdmin = false;
+  document.getElementById('adminBar').style.display = 'none';
+  document.getElementById('adminEntry').style.display = 'block';
+  document.querySelectorAll('.admin-delete').forEach(function(el) { el.style.display = 'none'; });
+  loadVoiceQuotes(); loadUserPhotos(); loadLetters(); loadCalendar(); loadMessages();
+}
+function adminDelete(table, id, cb) {
+  if (!isAdmin) return;
+  if (!confirm('确定删除？此操作不可撤销。')) return;
+  sb.from(table).delete().eq('id', id).then(function(r) {
+    if (r.error) { alert('删除失败'); return; }
+    if (cb) cb();
+  });
+}
+
+/* ========================================
    目录高亮
    ======================================== */
 (function() {
@@ -1035,6 +1092,7 @@ function loadUserPhotos() {
         html += '<div class="up-card-text">' + esc(p.text) + '</div>';
         html += '<div class="up-card-author">—— ' + esc(p.author || '匿名') + '</div>';
         html += '<div class="up-card-time">' + ts + '</div>';
+        html += '<button class="admin-delete" style="display:' + (isAdmin?'inline':'none') + '" onclick="adminDelete(\'user_photos\',\'' + p.id + '\',loadUserPhotos)">删除</button>';
         html += likeReplyUI('user_photo', p.id);
         html += '</div></div>';
         loadLikeCount('user_photo', p.id);
@@ -1109,6 +1167,7 @@ function loadVoiceQuotes() {
         html += '<div class="voice-card">';
         html += '<div class="qt">' + esc(v.quote) + '</div>';
         html += '<div class="by">' + esc(v.note) + '</div>';
+        html += '<button class="admin-delete" style="display:' + (isAdmin?'inline':'none') + '" onclick="adminDelete(\'voice_quotes\',\'' + v.id + '\',loadVoiceQuotes)">删除</button>';
         html += likeReplyUI('voice_quote', v.id);
         html += '</div>';
         loadLikeCount('voice_quote', v.id);
@@ -1171,6 +1230,7 @@ function loadLetters() {
         html += '<div class="letter-body">' + esc(l.body) + '</div>';
         html += '<div class="letter-author">—— ' + esc(l.author || '匿名') + '</div>';
         if (i === data.length - 1) html += '<span class="seal">茂<br>润</span>';
+        html += '<button class="admin-delete" style="display:' + (isAdmin?'inline':'none') + '" onclick="adminDelete(\'letters\',\'' + l.id + '\',loadLetters)">删除</button>';
         html += likeReplyUI('letter', l.id);
         html += '</div>';
         loadLikeCount('letter', l.id);
@@ -1239,7 +1299,8 @@ function loadCalendar() {
         html += '<div class="tl-title">' + esc(ev.title) + '</div>';
         if (ev.description) html += '<div class="tl-desc">' + esc(ev.description) + '</div>';
         html += '<div class="tl-days">' + diffStr + '</div>';
-        html += '<div class="tl-author">—— ' + esc(ev.author || '匿名') + '</div></div>';
+        html += '<div class="tl-author">—— ' + esc(ev.author || '匿名') + '</div>';
+        html += '<button class="admin-delete" style="display:' + (isAdmin?'inline':'none') + '" onclick="adminDelete(\'calendar_events\',\'' + ev.id + '\',loadCalendar)">删除</button></div>';
       });
       tl.innerHTML = html;
     });
@@ -1291,7 +1352,8 @@ function loadMessages() {
         var ts = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0') + ' ' + String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0');
         html += '<div class="msg-card"><div class="msg-author">' + esc(m.author || '匿名') + '</div>';
         html += '<div class="msg-text">' + esc(m.message) + '</div>';
-        html += '<div class="msg-time">' + ts + '</div></div>';
+        html += '<div class="msg-time">' + ts + '</div>';
+        html += '<button class="admin-delete" style="display:' + (isAdmin?'inline':'none') + '" onclick="adminDelete(\'guestbook_messages\',\'' + m.id + '\',loadMessages)">删除</button></div>';
       });
       document.getElementById('msgList').innerHTML = html;
     });
@@ -1311,5 +1373,12 @@ function submitMessage() {
 }
 loadMessages();
 </script>
+<!-- 管理面板 -->
+<div class="admin-bar" id="adminBar">
+  <span>管理面板</span>
+  <button onclick="exitAdmin()">退出管理</button>
+</div>
+<div class="admin-entry" id="adminEntry" onclick="enterAdmin()">管理</div>
+
 </body>
 </html>
