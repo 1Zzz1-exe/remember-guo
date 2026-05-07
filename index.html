@@ -353,7 +353,7 @@ body {
 .add-letter-btn:hover { background:rgba(184,147,90,0.06); border-color:var(--gold); }
 
 /* 关系网 */
-.rel-wrap { position:relative; width:100%; max-width:600px; margin:0 auto; min-height:420px; display:flex; align-items:center; justify-content:center; }
+.rel-wrap { position:relative; width:100%; max-width:680px; margin:0 auto; min-height:500px; display:flex; align-items:center; justify-content:center; }
 .rel-center {
   width:90px; height:90px; border-radius:50%; overflow:hidden;
   border:3px solid var(--blue); box-shadow:0 0 30px rgba(74,124,181,0.25);
@@ -1357,53 +1357,19 @@ function loadRelations() {
       cw.style.display = 'flex';
       if (data.length === 0) return;
       var allPeople = new Map();
-      allPeople.set('郭茂润', { x: 300, y: 200, isCenter: true });
+      allPeople.set('郭茂润', { x: 340, y: 250, isCenter: true });
       data.forEach(function(rel) {
         if (!allPeople.has(rel.person)) allPeople.set(rel.person, null);
         if (!allPeople.has(rel.name)) allPeople.set(rel.name, null);
       });
-      // 树形布局：一级节点在茂润周围，二级节点靠各自父节点
-      var l1 = []; // 直接连接郭茂润的人（person=郭茂润 或 name出现在郭茂润的relation中）
-      data.forEach(function(rel) {
-        if (rel.person === '郭茂润' && l1.indexOf(rel.name) === -1) l1.push(rel.name);
-      });
-      // 分配一级节点角度
-      var l1Angles = {};
-      l1.forEach(function(name, i) {
-        var angle = (i / l1.length) * Math.PI * 2 - Math.PI / 2;
-        l1Angles[name] = angle;
-        allPeople.set(name, { x: 300 + Math.cos(angle) * 110, y: 200 + Math.sin(angle) * 110, isCenter: false, parent: '郭茂润' });
-      });
-      // 二级节点：非一级节点，按父节点分布
-      var l2ByParent = {};
-      data.forEach(function(rel) {
-        if (rel.person !== '郭茂润' && l1.indexOf(rel.person) !== -1) {
-          if (!l2ByParent[rel.person]) l2ByParent[rel.person] = [];
-          if (l2ByParent[rel.person].indexOf(rel.name) === -1) l2ByParent[rel.person].push(rel.name);
-        }
-      });
-      Object.keys(l2ByParent).forEach(function(parent) {
-        var baseAngle = l1Angles[parent] || 0;
-        var children = l2ByParent[parent];
-        var parentPos = allPeople.get(parent);
-        children.forEach(function(child, i) {
-          var spread = (children.length > 1) ? 0.4 : 0;
-          var offset = spread * (i - (children.length - 1) / 2);
-          var angle = baseAngle + offset;
-          var dist = 80;
-          allPeople.set(child, {
-            x: parentPos.x + Math.cos(angle) * dist,
-            y: parentPos.y + Math.sin(angle) * dist,
-            isCenter: false, parent: parent
-          });
-        });
-      });
-      // 剩余未布局的节点放到外围
-      var unplaced = [];
-      allPeople.forEach(function(v, k) { if (!v && k !== '郭茂润') unplaced.push(k); });
-      unplaced.forEach(function(name, i) {
-        var angle = (i / Math.max(unplaced.length, 1)) * Math.PI * 2;
-        allPeople.set(name, { x: 300 + Math.cos(angle) * 195, y: 200 + Math.sin(angle) * 195, isCenter: false, parent: null });
+      // 环形布局：茂润居中，其他人均分在圆环上
+      var others = [];
+      allPeople.forEach(function(v, k) { if (k !== '郭茂润') others.push(k); });
+      others.sort();
+      var radius = Math.max(170, others.length * 22);
+      others.forEach(function(name, i) {
+        var angle = (i / others.length) * Math.PI * 2 - Math.PI / 2;
+        allPeople.set(name, { x: 340 + Math.cos(angle) * radius, y: 250 + Math.sin(angle) * radius, isCenter: false });
       });
       // 渲染节点
       allPeople.forEach(function(pos, name) {
@@ -1413,7 +1379,7 @@ function loadRelations() {
         node.className = 'rel-node';
         node.setAttribute('data-name', name);
         node.style.left = (pos.x - 50) + 'px';
-        node.style.top = (pos.y - 14) + 'px';
+        node.style.top = (pos.y - 22) + 'px';
         var rel = data.find(function(d) { return d.name === name; });
         node.innerHTML = '<div class="rn-name">' + esc(name) + '</div>' +
           (isAdmin && rel ? '<button class="admin-delete" style="display:inline" onclick="event.stopPropagation();adminDelete(\'relations\',\'' + rel.id + '\',loadRelations)">删除</button>' : '');
@@ -1429,7 +1395,7 @@ function loadRelations() {
         svg.innerHTML += '<line data-from="' + esc(rel.person) + '" data-to="' + esc(rel.name) + '" x1="' + from.x + '" y1="' + from.y + '" x2="' + to.x + '" y2="' + to.y + '"/>';
         svg.innerHTML += '<text x="' + mx + '" y="' + my + '" text-anchor="middle" font-size="10" fill="#8a827c" font-family="Noto Sans SC,sans-serif" letter-spacing="1" class="rel-label">' + esc(rel.relation) + '</text>';
       });
-      svg.setAttribute('viewBox', '0 0 600 400');
+      svg.setAttribute('viewBox', '0 0 680 500');
       // 中心节点点击取消聚焦
       document.getElementById('relCenter').onclick = function() {
         relSelectedNode = null;
