@@ -385,6 +385,8 @@ body {
 .rel-line line { stroke:var(--blue-light); stroke-width:1.5; stroke-dasharray:4 3; transition:stroke 0.3s, stroke-width 0.3s, opacity 0.3s; }
 .rel-line line.highlighted { stroke:var(--blue); stroke-width:2.5; stroke-dasharray:none; }
 .rel-line line.dimmed { opacity:0.1; }
+.rel-label { transition:opacity 0.3s; }
+.rel-label.dimmed { opacity:0; }
 .rel-focus-hint { text-align:center; font-size:12px; color:var(--text-light); letter-spacing:2px; margin-bottom:12px; }
 .add-rel-btn {
   display:block; margin:32px auto 0;
@@ -1393,7 +1395,6 @@ function loadRelations() {
                    data.find(function(d) { return d.name === name; });
         var relText = rel ? rel.relation : '';
         node.innerHTML = '<div class="rn-name">' + esc(name) + '</div>' +
-          (relText ? '<div class="rn-rel">' + esc(relText) + '</div>' : '') +
           (isAdmin && rel ? '<button class="admin-delete" style="display:inline" onclick="event.stopPropagation();adminDelete(\'relations\',\'' + rel.id + '\',loadRelations)">删除</button>' : '');
         node.onclick = function() { selectNode(name); };
         wrap.appendChild(node);
