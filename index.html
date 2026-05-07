@@ -295,6 +295,27 @@ body {
   transition:all 0.3s; font-family:inherit;
 }
 .add-voice-btn:hover { background:var(--blue-pale); border-color:var(--blue); }
+
+/* 点赞 & 追评 */
+.like-btn {
+  display:inline-flex; align-items:center; gap:4px;
+  background:none; border:none; cursor:pointer;
+  font-size:13px; color:var(--text-light); letter-spacing:1px;
+  transition:color 0.2s; font-family:inherit; padding:2px 0;
+}
+.like-btn:hover { color:var(--red-seal); }
+.like-btn.liked { color:var(--red-seal); }
+.reply-toggle {
+  display:inline-block; background:none; border:none; cursor:pointer;
+  font-size:12px; color:var(--blue); letter-spacing:2px;
+  margin-left:8px; font-family:inherit; padding:2px 0;
+}
+.replies { margin-top:8px; padding-left:12px; border-left:2px solid var(--blue-pale); }
+.reply-item { font-size:13px; color:var(--text); padding:3px 0; }
+.reply-item strong { color:var(--blue); font-weight:500; }
+.reply-form { margin-top:8px; display:flex; gap:8px; }
+.reply-form input { flex:1; font-family:inherit; font-size:12px; padding:6px 10px; border:1px solid var(--blue-light); border-radius:4px; background:var(--white); outline:none; }
+.reply-form button { font-family:inherit; font-size:11px; background:var(--blue); color:#fff; border:none; padding:4px 12px; border-radius:4px; cursor:pointer; letter-spacing:1px; }
 .add-letter-btn {
   display:block; margin:0 auto 48px;
   background:transparent; border:2px dashed var(--gold-light);
@@ -912,6 +933,86 @@ function submitAnnotation() {
 function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 /* ========================================
+   点赞 & 追评 共享逻辑
+   ======================================== */
+function likeReplyUI(type, id) {
+  return '<div style="margin-top:6px;">' +
+    '<button class="like-btn" id="lb_' + type + '_' + id + '" onclick="toggleLike(\'' + type + '\',\'' + id + '\')">♡ <span id="lc_' + type + '_' + id + '">0</span></button>' +
+    '<button class="reply-toggle" onclick="toggleReply(\'' + type + '\',\'' + id + '\')">追评</button>' +
+    '<div id="rp_' + type + '_' + id + '"></div>' +
+    '</div>';
+}
+function loadLikeCount(type, id) {
+  sb.from('likes').select('id', { count: 'exact' }).eq('target_type', type).eq('target_id', id)
+    .then(function(r) {
+      var el = document.getElementById('lc_' + type + '_' + id);
+      if (!el || r.error) return;
+      el.textContent = r.count || 0;
+    });
+}
+function loadReplies(type, id) {
+  sb.from('replies').select('*').eq('target_type', type).eq('target_id', id).order('created_at', { ascending: true })
+    .then(function(r) {
+      var el = document.getElementById('rp_' + type + '_' + id);
+      if (!el || r.error) return;
+      var data = r.data || [];
+      var html = '';
+      if (data.length > 0) {
+        html += '<div class="replies">';
+        data.forEach(function(rp) {
+          html += '<div class="reply-item"><strong>' + esc(rp.author || '匿名') + '</strong>：' + esc(rp.text) + '</div>';
+        });
+        html += '</div>';
+      }
+      el.innerHTML = html;
+    });
+}
+function toggleReply(type, id) {
+  var el = document.getElementById('rp_' + type + '_' + id);
+  if (!el) return;
+  var hasForm = el.querySelector('.reply-form');
+  if (hasForm) { hasForm.remove(); return; }
+  var form = document.createElement('div');
+  form.className = 'reply-form';
+  form.innerHTML = '<input type="text" id="rpInput_' + type + '_' + id + '" placeholder="写追评..." maxlength="150">' +
+    '<button onclick="submitReply(\'' + type + '\',\'' + id + '\')">发送</button>';
+  el.appendChild(form);
+}
+function submitReply(type, id) {
+  var input = document.getElementById('rpInput_' + type + '_' + id);
+  if (!input) return;
+  var text = input.value.trim();
+  if (!text) return;
+  sb.from('replies').insert([
+    { target_type: type, target_id: id, text: text, author: '匿名' }
+  ]).then(function(r) {
+    if (r.error) { alert('提交失败'); return; }
+    loadReplies(type, id);
+  });
+}
+function toggleLike(type, id) {
+  var btn = document.getElementById('lb_' + type + '_' + id);
+  var countEl = document.getElementById('lc_' + type + '_' + id);
+  sb.from('likes').select('id').eq('target_type', type).eq('target_id', id).eq('author', '匿名').limit(1)
+    .then(function(r) {
+      if (r.data && r.data.length > 0) {
+        // 已赞，取消
+        sb.from('likes').delete().eq('id', r.data[0].id).then(function() {
+          if (btn) btn.classList.remove('liked');
+          loadLikeCount(type, id);
+        });
+      } else {
+        // 未赞，点赞
+        sb.from('likes').insert([{ target_type: type, target_id: id, author: '匿名' }])
+          .then(function() {
+            if (btn) btn.classList.add('liked');
+            loadLikeCount(type, id);
+          });
+      }
+    });
+}
+
+/* ========================================
    用户上传照片 + 回忆
    ======================================== */
 function loadUserPhotos() {
@@ -934,7 +1035,10 @@ function loadUserPhotos() {
         html += '<div class="up-card-text">' + esc(p.text) + '</div>';
         html += '<div class="up-card-author">—— ' + esc(p.author || '匿名') + '</div>';
         html += '<div class="up-card-time">' + ts + '</div>';
+        html += likeReplyUI('user_photo', p.id);
         html += '</div></div>';
+        loadLikeCount('user_photo', p.id);
+        loadReplies('user_photo', p.id);
       });
       document.getElementById('userPhotosGrid').innerHTML = html;
     });
@@ -1002,8 +1106,13 @@ function loadVoiceQuotes() {
       document.getElementById('vcLoading').style.display = 'none';
       var html = '';
       data.forEach(function(v) {
-        html += '<div class="voice-card"><div class="qt">' + esc(v.quote) + '</div>';
-        html += '<div class="by">' + esc(v.note) + '</div></div>';
+        html += '<div class="voice-card">';
+        html += '<div class="qt">' + esc(v.quote) + '</div>';
+        html += '<div class="by">' + esc(v.note) + '</div>';
+        html += likeReplyUI('voice_quote', v.id);
+        html += '</div>';
+        loadLikeCount('voice_quote', v.id);
+        loadReplies('voice_quote', v.id);
       });
       document.getElementById('voiceCards').innerHTML = html;
     });
@@ -1062,7 +1171,10 @@ function loadLetters() {
         html += '<div class="letter-body">' + esc(l.body) + '</div>';
         html += '<div class="letter-author">—— ' + esc(l.author || '匿名') + '</div>';
         if (i === data.length - 1) html += '<span class="seal">茂<br>润</span>';
+        html += likeReplyUI('letter', l.id);
         html += '</div>';
+        loadLikeCount('letter', l.id);
+        loadReplies('letter', l.id);
       });
       document.getElementById('lettersList').innerHTML = html;
       // 重新触发 reveal 动画
