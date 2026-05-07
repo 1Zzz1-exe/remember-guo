@@ -1398,12 +1398,14 @@ function loadRelations() {
         node.onclick = function() { selectNode(name); };
         wrap.appendChild(node);
       });
-      // 渲染连线
+      // 渲染连线 + 关系标签
       data.forEach(function(rel) {
         var from = allPeople.get(rel.person);
         var to = allPeople.get(rel.name);
         if (!from || !to) return;
+        var mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2;
         svg.innerHTML += '<line data-from="' + esc(rel.person) + '" data-to="' + esc(rel.name) + '" x1="' + from.x + '" y1="' + from.y + '" x2="' + to.x + '" y2="' + to.y + '"/>';
+        svg.innerHTML += '<text x="' + mx + '" y="' + my + '" text-anchor="middle" font-size="10" fill="#8a827c" font-family="Noto Sans SC,sans-serif" letter-spacing="1" class="rel-label">' + esc(rel.relation) + '</text>';
       });
       svg.setAttribute('viewBox', '0 0 600 400');
       if (relSelectedNode) applyHighlight(relSelectedNode);
@@ -1420,7 +1422,6 @@ function selectNode(name) {
   }
 }
 function applyHighlight(name) {
-  // 收集与选中节点相关的所有连线
   var connected = new Set();
   connected.add(name);
   document.querySelectorAll('.rel-line line').forEach(function(l) {
@@ -1429,6 +1430,12 @@ function applyHighlight(name) {
     var related = (from === name || to === name);
     if (related) { l.classList.add('highlighted'); l.classList.remove('dimmed'); connected.add(from); connected.add(to); }
     else { l.classList.remove('highlighted'); l.classList.add('dimmed'); }
+  });
+  document.querySelectorAll('.rel-label').forEach(function(t) {
+    var prev = t.previousElementSibling;
+    if (prev && prev.tagName === 'line') {
+      t.classList.toggle('dimmed', prev.classList.contains('dimmed'));
+    }
   });
   document.querySelectorAll('.rel-node').forEach(function(n) {
     var nodeName = n.getAttribute('data-name');
@@ -1451,8 +1458,9 @@ function submitRelation() {
   var relation = document.getElementById('relRelation').value.trim();
   var author = document.getElementById('relAuthor').value.trim();
   if (!name || !relation) { alert('请填写姓名和关系'); return; }
+  var person = relSelectedNode || '郭茂润';
   sb.from('relations').insert([
-    { name: name, relation: relation, author: author || '匿名', person: '郭茂润' }
+    { name: name, relation: relation, author: author || '匿名', person: person }
   ]).then(function(r) {
     if (r.error) { alert('提交失败，请重试'); return; }
     closeRelModal();
