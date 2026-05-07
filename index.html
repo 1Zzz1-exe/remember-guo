@@ -352,6 +352,45 @@ body {
 }
 .add-letter-btn:hover { background:rgba(184,147,90,0.06); border-color:var(--gold); }
 
+/* 关系网 */
+.rel-wrap { position:relative; width:100%; max-width:600px; margin:0 auto; min-height:420px; }
+.rel-center {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:90px; height:90px; border-radius:50%; overflow:hidden;
+  border:3px solid var(--blue); box-shadow:0 0 30px rgba(74,124,181,0.25);
+  z-index:2; background:var(--white);
+}
+.rel-center img { width:100%; height:100%; object-fit:cover; }
+.rel-center-label {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:90px; height:90px; text-align:center; line-height:90px;
+  font-family:'Noto Serif SC',serif; font-size:14px; font-weight:700;
+  color:var(--deep); letter-spacing:2px; pointer-events:none;
+}
+.rel-node {
+  position:absolute; background:var(--white); border-radius:8px;
+  padding:10px 16px; text-align:center;
+  box-shadow:0 2px 12px rgba(0,0,0,0.06);
+  transition:transform 0.3s, box-shadow 0.3s; cursor:default;
+  z-index:1; white-space:nowrap;
+}
+.rel-node:hover { transform:scale(1.06); box-shadow:0 4px 20px rgba(0,0,0,0.12); }
+.rel-node .rn-name { font-size:14px; font-weight:600; color:var(--deep); letter-spacing:2px; }
+.rel-node .rn-rel { font-size:11px; color:var(--blue); letter-spacing:1px; margin-top:2px; }
+.rel-line {
+  position:absolute; top:0; left:0; width:100%; height:100%;
+  pointer-events:none; z-index:0;
+}
+.rel-line line { stroke:var(--blue-light); stroke-width:1.5; stroke-dasharray:4 3; }
+.add-rel-btn {
+  display:block; margin:32px auto 0;
+  background:transparent; border:2px dashed var(--blue-light);
+  color:var(--blue); padding:12px 28px; border-radius:8px;
+  cursor:pointer; font-size:14px; letter-spacing:4px;
+  transition:all 0.3s; font-family:inherit;
+}
+.add-rel-btn:hover { background:var(--blue-pale); border-color:var(--blue); }
+
 /* ========================================
    第四章 · 鸿雁
    ======================================== */
@@ -582,8 +621,9 @@ body {
     <li><a href="#ch2">江湖</a></li>
     <li><a href="#ch3">声影</a></li>
     <li><a href="#ch4">鸿雁</a></li>
-    <li><a href="#ch5">时光</a></li>
-    <li><a href="#ch6">余音</a></li>
+    <li><a href="#ch5">故人</a></li>
+    <li><a href="#ch6">时光</a></li>
+    <li><a href="#ch7">余音</a></li>
     <li><a href="#closing">念</a></li>
   </ul>
 </nav>
@@ -682,9 +722,23 @@ body {
   </div>
 </section>
 
-<!-- ==================== 第五章 · 时光 ==================== -->
-<section class="ch5 reveal" id="ch5">
+<!-- ==================== 第五章 · 故人 ==================== -->
+<section class="ch3 reveal" id="ch5">
   <div class="chapter-label">第 五 章</div>
+  <div class="chapter-title">故 人</div>
+  <div class="rel-wrap" id="relWrap">
+    <svg class="rel-line" id="relSvg"></svg>
+    <div class="rel-center">
+      <img src="photos/01.jpg" alt="郭茂润">
+    </div>
+    <div class="rel-center-label" style="top:calc(50% + 110px); line-height:1; font-size:11px; color:var(--text-light);">郭茂润</div>
+  </div>
+  <button class="add-rel-btn" onclick="openRelModal()">+ 添加关系</button>
+</section>
+
+<!-- ==================== 第六章 · 时光 ==================== -->
+<section class="ch5 reveal" id="ch6">
+  <div class="chapter-label">第 六 章</div>
   <div class="chapter-title">时 光</div>
   <div class="timeline" id="timeline">
     <div class="loading" id="tlLoading">正在加载纪念日历...</div>
@@ -692,9 +746,9 @@ body {
   <button class="add-event-btn" onclick="openEventModal()">+ 添加一个纪念日</button>
 </section>
 
-<!-- ==================== 第六章 · 余音 ==================== -->
-<section class="ch6 reveal" id="ch6">
-  <div class="chapter-label">第 六 章</div>
+<!-- ==================== 第七章 · 余音 ==================== -->
+<section class="ch6 reveal" id="ch7">
+  <div class="chapter-label">第 七 章</div>
   <div class="chapter-title">余 音</div>
   <div class="ch6-inner">
     <div class="msg-list" id="msgList">
@@ -720,6 +774,18 @@ body {
 </section>
 
 <!-- ==================== 浮层 ==================== -->
+<!-- 关系添加 -->
+<div class="modal-overlay" id="relModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeRelModal()">&times;</button>
+    <h3>添加关系</h3>
+    <input type="text" id="relName" placeholder="姓名" maxlength="20">
+    <input type="text" id="relRelation" placeholder="关系（如：同桌、好友、老师）" maxlength="30">
+    <input type="text" id="relAuthor" placeholder="你的名字" maxlength="20">
+    <button onclick="submitRelation()">确认添加</button>
+  </div>
+</div>
+
 <!-- 书信添加 -->
 <div class="modal-overlay" id="letterModal">
   <div class="modal-box">
@@ -1266,6 +1332,69 @@ function submitLetter() {
   });
 }
 loadLetters();
+
+/* ========================================
+   关系网
+   ======================================== */
+function loadRelations() {
+  sb.from('relations').select('*').order('created_at', { ascending: true })
+    .then(function(r) {
+      if (r.error) return;
+      var data = r.data || [];
+      var wrap = document.getElementById('relWrap');
+      var svg = document.getElementById('relSvg');
+      // 清除旧节点和线条
+      wrap.querySelectorAll('.rel-node').forEach(function(el) { el.remove(); });
+      svg.innerHTML = '';
+      if (data.length === 0) return;
+      var cx = 300, cy = 200, r = 150;
+      var html = '';
+      data.forEach(function(rel, i) {
+        var angle = (i / data.length) * Math.PI * 2 - Math.PI / 2;
+        var nx = cx + Math.cos(angle) * r;
+        var ny = cy + Math.sin(angle) * r;
+        html += '<div class="rel-node" style="left:' + (nx - 50) + 'px;top:' + (ny - 22) + 'px;">' +
+          '<div class="rn-name">' + esc(rel.name) + '</div>' +
+          '<div class="rn-rel">' + esc(rel.relation) + '</div>' +
+          (isAdmin ? '<button class="admin-delete" style="display:inline" onclick="adminDelete(\'relations\',\'' + rel.id + '\',loadRelations)">删除</button>' : '') +
+          '</div>';
+        // Draw SVG line
+        var t1 = angleToXY(cx + 45, cy, angle, 45);
+        var t2 = angleToXY(nx, ny, angle + Math.PI, 50);
+        svg.innerHTML += '<line x1="' + t1.x + '" y1="' + t1.y + '" x2="' + t2.x + '" y2="' + t2.y + '"/>';
+      });
+      svg.setAttribute('viewBox', '0 0 600 400');
+      wrap.insertAdjacentHTML('beforeend', html);
+    });
+}
+function angleToXY(cx, cy, angle, dist) {
+  return { x: cx + Math.cos(angle) * dist, y: cy + Math.sin(angle) * dist };
+}
+function openRelModal() {
+  document.getElementById('relModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function closeRelModal() {
+  document.getElementById('relModal').classList.remove('active');
+  document.body.style.overflow = '';
+}
+function submitRelation() {
+  var name = document.getElementById('relName').value.trim();
+  var relation = document.getElementById('relRelation').value.trim();
+  var author = document.getElementById('relAuthor').value.trim();
+  if (!name || !relation) { alert('请填写姓名和关系'); return; }
+  sb.from('relations').insert([
+    { name: name, relation: relation, author: author || '匿名' }
+  ]).then(function(r) {
+    if (r.error) { alert('提交失败，请重试'); return; }
+    closeRelModal();
+    loadRelations();
+    document.getElementById('relName').value = '';
+    document.getElementById('relRelation').value = '';
+    document.getElementById('relAuthor').value = '';
+  });
+}
+loadRelations();
 
 /* ========================================
    纪念日历
