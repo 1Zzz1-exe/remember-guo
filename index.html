@@ -1000,16 +1000,24 @@ function submitVoice() {
   var note = document.getElementById('vcNote').value.trim();
   var author = document.getElementById('vcAuthor').value.trim();
   if (!quote) { alert('请填写语录内容'); return; }
-  sb.from('voice_quotes').insert([
-    { quote: quote, note: note, author: author || '匿名' }
-  ]).then(function(r) {
-    if (r.error) { alert('提交失败，请重试'); return; }
-    closeVoiceModal();
-    loadVoiceQuotes();
-    document.getElementById('vcQuote').value = '';
-    document.getElementById('vcNote').value = '';
-    document.getElementById('vcAuthor').value = '';
-  });
+  // 检查重复
+  sb.from('voice_quotes').select('id').eq('quote', quote).limit(1)
+    .then(function(check) {
+      if (check.data && check.data.length > 0) {
+        alert('这句话已经有人添加过了～');
+        return;
+      }
+      sb.from('voice_quotes').insert([
+        { quote: quote, note: note, author: author || '匿名' }
+      ]).then(function(r) {
+        if (r.error) { alert('提交失败，请重试'); return; }
+        closeVoiceModal();
+        loadVoiceQuotes();
+        document.getElementById('vcQuote').value = '';
+        document.getElementById('vcNote').value = '';
+        document.getElementById('vcAuthor').value = '';
+      });
+    });
 }
 loadVoiceQuotes();
 
