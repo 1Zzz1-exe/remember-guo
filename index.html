@@ -664,7 +664,7 @@ body {
   <div class="modal-box">
     <button class="modal-close" onclick="closePhotoModal()">&times;</button>
     <h3>添加照片与回忆</h3>
-    <input type="text" id="upImageUrl" placeholder="图片链接（把图片上传到图床，粘贴链接）" maxlength="500">
+    <input type="file" id="upImageFile" accept="image/*" style="font-family:inherit;font-size:14px;margin-bottom:12px;">
     <textarea id="upText" placeholder="写一段回忆或想说的话..." maxlength="300"></textarea>
     <input type="text" id="upAuthor" placeholder="你的名字" maxlength="20">
     <button onclick="submitUserPhoto()">确认添加</button>
@@ -887,20 +887,26 @@ function closePhotoModal() {
   document.body.style.overflow = '';
 }
 function submitUserPhoto() {
-  var url = document.getElementById('upImageUrl').value.trim();
+  var file = document.getElementById('upImageFile').files[0];
   var text = document.getElementById('upText').value.trim();
   var author = document.getElementById('upAuthor').value.trim();
-  if (!url || !text) { alert('请填写图片链接和回忆文字'); return; }
-  sb.from('user_photos').insert([
-    { image_url: url, text: text, author: author || '匿名' }
-  ]).then(function(r) {
-    if (r.error) { alert('提交失败，请重试'); return; }
-    closePhotoModal();
-    loadUserPhotos();
-    document.getElementById('upImageUrl').value = '';
-    document.getElementById('upText').value = '';
-    document.getElementById('upAuthor').value = '';
-  });
+  if (!file || !text) { alert('请选择照片并填写回忆文字'); return; }
+  var fileName = Date.now() + '_' + file.name;
+  sb.storage.from('photos').upload(fileName, file)
+    .then(function(up) {
+      if (up.error) { alert('上传失败，请重试'); return; }
+      var url = SB_URL + '/storage/v1/object/public/photos/' + fileName;
+      sb.from('user_photos').insert([
+        { image_url: url, text: text, author: author || '匿名' }
+      ]).then(function(r) {
+        if (r.error) { alert('提交失败，请重试'); return; }
+        closePhotoModal();
+        loadUserPhotos();
+        document.getElementById('upImageFile').value = '';
+        document.getElementById('upText').value = '';
+        document.getElementById('upAuthor').value = '';
+      });
+    });
 }
 loadUserPhotos();
 
