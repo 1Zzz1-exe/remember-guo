@@ -353,25 +353,24 @@ body {
 .add-letter-btn:hover { background:rgba(184,147,90,0.06); border-color:var(--gold); }
 
 /* 关系网 */
-.rel-wrap { position:relative; width:100%; max-width:600px; margin:0 auto; min-height:420px; }
+.rel-wrap { position:relative; width:100%; max-width:600px; margin:0 auto; min-height:420px; display:flex; align-items:center; justify-content:center; }
 .rel-center {
-  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
   width:90px; height:90px; border-radius:50%; overflow:hidden;
   border:3px solid var(--blue); box-shadow:0 0 30px rgba(74,124,181,0.25);
-  z-index:2; background:var(--white);
+  z-index:2; background:var(--white); flex-shrink:0;
 }
 .rel-center img { width:100%; height:100%; object-fit:cover; }
 .rel-center-label {
-  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-  width:90px; height:90px; text-align:center; line-height:90px;
-  font-family:'Noto Serif SC',serif; font-size:14px; font-weight:700;
-  color:var(--deep); letter-spacing:2px; pointer-events:none;
+  text-align:center; font-family:'Noto Serif SC',serif;
+  font-size:11px; color:var(--text-light); letter-spacing:2px;
+  margin-top:6px;
 }
+.rel-center-wrap { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:2; display:flex; flex-direction:column; align-items:center; }
 .rel-node {
   position:absolute; background:var(--white); border-radius:8px;
   padding:10px 16px; text-align:center;
   box-shadow:0 2px 12px rgba(0,0,0,0.06);
-  transition:transform 0.3s, box-shadow 0.3s; cursor:default;
+  transition:transform 0.3s, box-shadow 0.3s; cursor:pointer;
   z-index:1; white-space:nowrap;
 }
 .rel-node:hover { transform:scale(1.06); box-shadow:0 4px 20px rgba(0,0,0,0.12); }
@@ -382,6 +381,13 @@ body {
   pointer-events:none; z-index:0;
 }
 .rel-line line { stroke:var(--blue-light); stroke-width:1.5; stroke-dasharray:4 3; }
+.rel-focus-info { text-align:center; margin-bottom:8px; }
+.rel-focus-name { font-family:'Noto Serif SC',serif; font-size:14px; color:var(--deep); letter-spacing:2px; }
+.rel-back-btn {
+  display:inline-block; margin-top:4px; background:none; border:none;
+  color:var(--blue); cursor:pointer; font-size:12px; letter-spacing:2px;
+  font-family:inherit; text-decoration:underline;
+}
 .add-rel-btn {
   display:block; margin:32px auto 0;
   background:transparent; border:2px dashed var(--blue-light);
@@ -726,12 +732,16 @@ body {
 <section class="ch3 reveal" id="ch5">
   <div class="chapter-label">第 五 章</div>
   <div class="chapter-title">故 人</div>
+  <div class="rel-focus-info" id="relFocusInfo" style="display:none">
+    <div class="rel-focus-name" id="relFocusName"></div>
+    <button class="rel-back-btn" onclick="focusRelation('郭茂润')">← 返回茂润</button>
+  </div>
   <div class="rel-wrap" id="relWrap">
     <svg class="rel-line" id="relSvg"></svg>
-    <div class="rel-center">
-      <img src="photos/01.jpg" alt="郭茂润">
+    <div class="rel-center-wrap" id="relCenterWrap">
+      <div class="rel-center" id="relCenter"><img src="photos/01.jpg" alt=""></div>
+      <div class="rel-center-label" id="relCenterLabel">郭茂润</div>
     </div>
-    <div class="rel-center-label" style="top:calc(50% + 110px); line-height:1; font-size:11px; color:var(--text-light);">郭茂润</div>
   </div>
   <button class="add-rel-btn" onclick="openRelModal()">+ 添加关系</button>
 </section>
@@ -1336,35 +1346,52 @@ loadLetters();
 /* ========================================
    关系网
    ======================================== */
+var relFocusPerson = '郭茂润';
+function focusRelation(person) {
+  relFocusPerson = person;
+  if (person === '郭茂润') {
+    document.getElementById('relCenter').innerHTML = '<img src="photos/01.jpg" alt="">';
+    document.getElementById('relCenterLabel').textContent = '郭茂润';
+    document.getElementById('relFocusInfo').style.display = 'none';
+  } else {
+    document.getElementById('relCenter').innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:Noto Serif SC,serif;font-size:20px;font-weight:700;color:var(--deep);">' + esc(person[0]) + '</div>';
+    document.getElementById('relCenterLabel').textContent = person;
+    document.getElementById('relFocusName').textContent = '正在查看：' + person;
+    document.getElementById('relFocusInfo').style.display = 'block';
+  }
+  loadRelations();
+}
 function loadRelations() {
-  sb.from('relations').select('*').order('created_at', { ascending: true })
+  sb.from('relations').select('*').eq('person', relFocusPerson).order('created_at', { ascending: true })
     .then(function(r) {
       if (r.error) return;
       var data = r.data || [];
       var wrap = document.getElementById('relWrap');
       var svg = document.getElementById('relSvg');
-      // 清除旧节点和线条
       wrap.querySelectorAll('.rel-node').forEach(function(el) { el.remove(); });
       svg.innerHTML = '';
+      var cw = document.getElementById('relCenterWrap');
+      cw.style.display = 'flex';
       if (data.length === 0) return;
       var cx = 300, cy = 200, r = 150;
-      var html = '';
       data.forEach(function(rel, i) {
         var angle = (i / data.length) * Math.PI * 2 - Math.PI / 2;
-        var nx = cx + Math.cos(angle) * r;
-        var ny = cy + Math.sin(angle) * r;
-        html += '<div class="rel-node" style="left:' + (nx - 50) + 'px;top:' + (ny - 22) + 'px;">' +
-          '<div class="rn-name">' + esc(rel.name) + '</div>' +
+        var nx = cx + Math.cos(angle) * r - 50;
+        var ny = cy + Math.sin(angle) * r - 22;
+        var node = document.createElement('div');
+        node.className = 'rel-node';
+        node.style.left = nx + 'px';
+        node.style.top = ny + 'px';
+        node.innerHTML = '<div class="rn-name">' + esc(rel.name) + '</div>' +
           '<div class="rn-rel">' + esc(rel.relation) + '</div>' +
-          (isAdmin ? '<button class="admin-delete" style="display:inline" onclick="adminDelete(\'relations\',\'' + rel.id + '\',loadRelations)">删除</button>' : '') +
-          '</div>';
-        // Draw SVG line
-        var t1 = angleToXY(cx + 45, cy, angle, 45);
-        var t2 = angleToXY(nx, ny, angle + Math.PI, 50);
+          (isAdmin ? '<button class="admin-delete" style="display:inline" onclick="event.stopPropagation();adminDelete(\'relations\',\'' + rel.id + '\',loadRelations)">删除</button>' : '');
+        node.onclick = function() { focusRelation(rel.name); };
+        wrap.appendChild(node);
+        var t1 = angleToXY(300, 200, angle, 45);
+        var t2 = angleToXY(300 + Math.cos(angle) * r, 200 + Math.sin(angle) * r, angle + Math.PI, 50);
         svg.innerHTML += '<line x1="' + t1.x + '" y1="' + t1.y + '" x2="' + t2.x + '" y2="' + t2.y + '"/>';
       });
       svg.setAttribute('viewBox', '0 0 600 400');
-      wrap.insertAdjacentHTML('beforeend', html);
     });
 }
 function angleToXY(cx, cy, angle, dist) {
@@ -1384,7 +1411,7 @@ function submitRelation() {
   var author = document.getElementById('relAuthor').value.trim();
   if (!name || !relation) { alert('请填写姓名和关系'); return; }
   sb.from('relations').insert([
-    { name: name, relation: relation, author: author || '匿名' }
+    { name: name, relation: relation, author: author || '匿名', person: relFocusPerson }
   ]).then(function(r) {
     if (r.error) { alert('提交失败，请重试'); return; }
     closeRelModal();
