@@ -264,6 +264,14 @@ body {
   transition:all 0.3s; font-family:inherit;
 }
 .add-photo-btn:hover { background:var(--blue-pale); border-color:var(--blue); }
+.add-voice-btn {
+  display:block; margin:20px auto 0;
+  background:transparent; border:2px dashed var(--blue-light);
+  color:var(--blue); padding:10px 28px; border-radius:8px;
+  cursor:pointer; font-size:14px; letter-spacing:3px;
+  transition:all 0.3s; font-family:inherit;
+}
+.add-voice-btn:hover { background:var(--blue-pale); border-color:var(--blue); }
 
 /* ========================================
    第四章 · 鸿雁
@@ -546,11 +554,10 @@ body {
 <section class="ch3 reveal">
   <div class="chapter-label">第 三 章</div>
   <div class="chapter-title">声 影</div>
-  <div class="voice-cards">
-    <div class="voice-card"><div class="qt">班师班师！</div><div class="by">每次回宿舍必定大喊</div></div>
-    <div class="voice-card"><div class="qt">回~家咯！</div><div class="by">放假时拖着长长的尾音</div></div>
-    <div class="voice-card"><div class="qt">以绝望挥剑，着逝者为铠</div><div class="by">你念这句台词时，眼睛里全是光</div></div>
+  <div class="voice-cards" id="voiceCards">
+    <div class="loading" id="vcLoading">正在加载...</div>
   </div>
+  <button class="add-voice-btn" onclick="openVoiceModal()">+ 添加他说过的话</button>
   <div class="gallery" id="gallery"></div>
   <div class="user-photos-section">
     <h3 class="user-photos-title">同 学 们 的 回 忆</h3>
@@ -645,6 +652,18 @@ body {
 </section>
 
 <!-- ==================== 浮层 ==================== -->
+<!-- 语录添加 -->
+<div class="modal-overlay" id="voiceModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeVoiceModal()">&times;</button>
+    <h3>添加他说过的话</h3>
+    <input type="text" id="vcQuote" placeholder="他说过的话" maxlength="100">
+    <input type="text" id="vcNote" placeholder="备注（比如什么时候说的）" maxlength="100">
+    <input type="text" id="vcAuthor" placeholder="你的名字" maxlength="20">
+    <button onclick="submitVoice()">确认添加</button>
+  </div>
+</div>
+
 <!-- 照片添加 -->
 <div class="modal-overlay" id="photoModal">
   <div class="modal-box">
@@ -889,6 +908,53 @@ function submitUserPhoto() {
   });
 }
 loadUserPhotos();
+
+/* ========================================
+   语录加载与提交
+   ======================================== */
+function loadVoiceQuotes() {
+  sb.from('voice_quotes').select('*').order('created_at', { ascending: true })
+    .then(function(r) {
+      if (r.error) { document.getElementById('vcLoading').textContent = '加载失败'; return; }
+      var data = r.data || [];
+      if (data.length === 0) {
+        document.getElementById('vcLoading').textContent = '';
+        return;
+      }
+      document.getElementById('vcLoading').style.display = 'none';
+      var html = '';
+      data.forEach(function(v) {
+        html += '<div class="voice-card"><div class="qt">' + esc(v.quote) + '</div>';
+        html += '<div class="by">' + esc(v.note) + '</div></div>';
+      });
+      document.getElementById('voiceCards').innerHTML = html;
+    });
+}
+function openVoiceModal() {
+  document.getElementById('voiceModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function closeVoiceModal() {
+  document.getElementById('voiceModal').classList.remove('active');
+  document.body.style.overflow = '';
+}
+function submitVoice() {
+  var quote = document.getElementById('vcQuote').value.trim();
+  var note = document.getElementById('vcNote').value.trim();
+  var author = document.getElementById('vcAuthor').value.trim();
+  if (!quote) { alert('请填写语录内容'); return; }
+  sb.from('voice_quotes').insert([
+    { quote: quote, note: note, author: author || '匿名' }
+  ]).then(function(r) {
+    if (r.error) { alert('提交失败，请重试'); return; }
+    closeVoiceModal();
+    loadVoiceQuotes();
+    document.getElementById('vcQuote').value = '';
+    document.getElementById('vcNote').value = '';
+    document.getElementById('vcAuthor').value = '';
+  });
+}
+loadVoiceQuotes();
 
 /* ========================================
    纪念日历
