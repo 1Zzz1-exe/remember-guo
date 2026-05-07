@@ -40,6 +40,26 @@ body {
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:var(--blue); border-radius:3px; }
 
+/* ===== 侧边目录 ===== */
+.side-nav {
+  position:fixed; left:0; top:50%; transform:translateY(-50%);
+  z-index:500; padding:0 20px;
+}
+.side-nav ul { list-style:none; }
+.side-nav li { margin-bottom:4px; }
+.side-nav a {
+  display:block; text-decoration:none;
+  font-family:'Noto Serif SC', serif;
+  font-size:13px; color:var(--text-light);
+  letter-spacing:2px; padding:6px 12px;
+  border-left:2px solid transparent;
+  transition:all 0.3s ease;
+  white-space:nowrap;
+}
+.side-nav a:hover { color:var(--blue); border-left-color:var(--blue-light); }
+.side-nav a.active { color:var(--blue); border-left-color:var(--blue); font-weight:600; }
+@media (max-width:900px) { .side-nav { display:none; } }
+
 /* ===== 通用 Reveal 动画 ===== */
 .reveal {
   opacity:0; transform:translateY(40px);
@@ -503,6 +523,20 @@ body {
 </head>
 <body>
 
+<!-- 目录 -->
+<nav class="side-nav">
+  <ul>
+    <li><a href="#hero" class="active">序</a></li>
+    <li><a href="#ch1">印象</a></li>
+    <li><a href="#ch2">江湖</a></li>
+    <li><a href="#ch3">声影</a></li>
+    <li><a href="#ch4">鸿雁</a></li>
+    <li><a href="#ch5">时光</a></li>
+    <li><a href="#ch6">余音</a></li>
+    <li><a href="#closing">念</a></li>
+  </ul>
+</nav>
+
 <!-- 音乐 -->
 <video id="bgm" loop preload="auto" playsinline src="audio/30347628465-1-30280.mp4" style="display:none"></video>
 <button class="music-btn" id="musicBtn" title="播放音乐" onclick="toggleMusic()">&#9835;</button>
@@ -523,7 +557,7 @@ body {
 </section>
 
 <!-- ==================== 第一章 · 印象 ==================== -->
-<section class="ch1 reveal">
+<section class="ch1 reveal" id="ch1">
   <div class="chapter-label">第 一 章</div>
   <div class="chapter-title">印 象</div>
   <div class="ch1-grid">
@@ -539,7 +573,7 @@ body {
 </section>
 
 <!-- ==================== 第二章 · 江湖 ==================== -->
-<section class="ch2 reveal">
+<section class="ch2 reveal" id="ch2">
   <div class="chapter-label">第 二 章</div>
   <div class="chapter-title">江 湖</div>
   <div class="ch2-inner">
@@ -559,7 +593,7 @@ body {
 </section>
 
 <!-- ==================== 第三章 · 声影 ==================== -->
-<section class="ch3 reveal">
+<section class="ch3 reveal" id="ch3">
   <div class="chapter-label">第 三 章</div>
   <div class="chapter-title">声 影</div>
   <div class="voice-cards" id="voiceCards">
@@ -577,7 +611,7 @@ body {
 </section>
 
 <!-- ==================== 第四章 · 鸿雁 ==================== -->
-<section class="ch4 reveal">
+<section class="ch4 reveal" id="ch4">
   <div class="chapter-label">第 四 章</div>
   <div class="chapter-title">鸿 雁</div>
   <div class="ch4-inner">
@@ -598,7 +632,7 @@ body {
 </section>
 
 <!-- ==================== 第五章 · 时光 ==================== -->
-<section class="ch5 reveal">
+<section class="ch5 reveal" id="ch5">
   <div class="chapter-label">第 五 章</div>
   <div class="chapter-title">时 光</div>
   <div class="timeline" id="timeline">
@@ -608,7 +642,7 @@ body {
 </section>
 
 <!-- ==================== 第六章 · 余音 ==================== -->
-<section class="ch6 reveal">
+<section class="ch6 reveal" id="ch6">
   <div class="chapter-label">第 六 章</div>
   <div class="chapter-title">余 音</div>
   <div class="ch6-inner">
@@ -624,7 +658,7 @@ body {
 </section>
 
 <!-- ==================== 尾声 · 念 ==================== -->
-<section class="closing reveal">
+<section class="closing reveal" id="closing">
   <div class="closing-text">
     <p>郭少郎，</p>
     <p>山河远阔，江湖不老。</p>
@@ -712,6 +746,28 @@ const sb = supabase.createClient(SB_URL, SB_KEY);
           document.getElementById('viewCount').textContent = '已有 ' + newCount + ' 人来过';
         });
     });
+})();
+
+/* ========================================
+   目录高亮
+   ======================================== */
+(function() {
+  var links = document.querySelectorAll('.side-nav a');
+  var sections = [];
+  links.forEach(function(a) {
+    var id = a.getAttribute('href').substring(1);
+    var el = document.getElementById(id);
+    if (el) sections.push({ el: el, link: a });
+  });
+  window.addEventListener('scroll', function() {
+    var scrollY = window.scrollY + 120;
+    var active = null;
+    sections.forEach(function(s) {
+      if (s.el.offsetTop <= scrollY) active = s;
+    });
+    links.forEach(function(a) { a.classList.remove('active'); });
+    if (active) active.link.classList.add('active');
+  });
 })();
 
 /* ========================================
