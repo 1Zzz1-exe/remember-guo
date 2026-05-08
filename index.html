@@ -353,7 +353,7 @@ body {
 .add-letter-btn:hover { background:rgba(184,147,90,0.06); border-color:var(--gold); }
 
 /* 关系网 */
-.rel-wrap { position:relative; width:100%; max-width:680px; margin:0 auto; min-height:500px; display:flex; align-items:center; justify-content:center; }
+.rel-wrap { position:relative; width:100%; max-width:800px; margin:0 auto; min-height:550px; }
 .rel-center {
   width:90px; height:90px; border-radius:50%; overflow:hidden;
   border:3px solid var(--blue); box-shadow:0 0 30px rgba(74,124,181,0.25);
@@ -1358,28 +1358,18 @@ function loadRelations() {
       cw.style.display = 'flex';
       if (data.length === 0) return;
       var allPeople = new Map();
-      allPeople.set('郭茂润', null); // 坐标稍后动态计算
+      allPeople.set('郭茂润', null);
       data.forEach(function(rel) {
         if (!allPeople.has(rel.person)) allPeople.set(rel.person, null);
         if (!allPeople.has(rel.name)) allPeople.set(rel.name, null);
       });
-      // 环形布局：茂润居中，其他人均分在圆环上
       var others = [];
       allPeople.forEach(function(v, k) { if (k !== '郭茂润') others.push(k); });
       others.sort();
-      var radius = Math.max(170, others.length * 28);
-      // 动态撑开画布，防止节点溢出
-      var needed = (radius + 100) * 2;
-      var vw = Math.max(680, needed);
-      var vh = Math.max(500, needed);
-      document.getElementById('relWrap').style.minHeight = vh + 'px';
+      var vw = 800, vh = 550, cx = 400, cy = 275;
+      var radius = Math.min(250, Math.max(180, others.length * 30));
       svg.setAttribute('viewBox', '0 0 ' + vw + ' ' + vh);
-      var cx = vw / 2, cy = vh / 2;
       allPeople.set('郭茂润', { x: cx, y: cy, isCenter: true });
-      // 重算中心坐标
-      var centerWrap = document.getElementById('relCenterWrap');
-      centerWrap.style.left = cx + 'px';
-      centerWrap.style.top = cy + 'px';
       others.forEach(function(name, i) {
         var angle = (i / others.length) * Math.PI * 2 - Math.PI / 2;
         allPeople.set(name, { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius, isCenter: false });
