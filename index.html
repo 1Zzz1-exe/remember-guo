@@ -353,7 +353,8 @@ body {
 .add-letter-btn:hover { background:rgba(184,147,90,0.06); border-color:var(--gold); }
 
 /* 关系网 */
-.rel-wrap { position:relative; width:100%; max-width:800px; margin:0 auto; min-height:550px; }
+.rel-wrap { position:relative; width:800px; height:550px; margin:0 auto; }
+.rel-scroll { width:100%; overflow-x:auto; padding:20px 0; }
 .rel-center {
   width:90px; height:90px; border-radius:50%; overflow:hidden;
   border:3px solid var(--blue); box-shadow:0 0 30px rgba(74,124,181,0.25);
@@ -733,11 +734,13 @@ body {
   <div class="chapter-label">第 五 章</div>
   <div class="chapter-title">故 人</div>
   <div class="rel-focus-hint">点击节点聚焦，点击茂润取消</div>
-  <div class="rel-wrap" id="relWrap">
-    <svg class="rel-line" id="relSvg"></svg>
-    <div class="rel-center-wrap" id="relCenterWrap">
-      <div class="rel-center" id="relCenter"><img src="photos/01.jpg" alt=""></div>
-      <div class="rel-center-label" id="relCenterLabel">郭茂润</div>
+  <div class="rel-scroll">
+    <div class="rel-wrap" id="relWrap">
+      <svg class="rel-line" id="relSvg"></svg>
+      <div class="rel-center-wrap" id="relCenterWrap">
+        <div class="rel-center" id="relCenter"><img src="photos/01.jpg" alt=""></div>
+        <div class="rel-center-label" id="relCenterLabel">郭茂润</div>
+      </div>
     </div>
   </div>
   <button class="add-rel-btn" onclick="openRelModal()">+ 添加关系</button>
