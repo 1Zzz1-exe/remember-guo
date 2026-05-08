@@ -353,8 +353,7 @@ body {
 .add-letter-btn:hover { background:rgba(184,147,90,0.06); border-color:var(--gold); }
 
 /* 关系网 */
-.rel-wrap { position:relative; width:800px; height:550px; margin:0 auto; }
-.rel-scroll { width:100%; overflow-x:auto; padding:20px 0; }
+.rel-wrap { position:relative; width:100%; max-width:680px; margin:0 auto; min-height:500px; display:flex; align-items:center; justify-content:center; }
 .rel-center {
   width:90px; height:90px; border-radius:50%; overflow:hidden;
   border:3px solid var(--blue); box-shadow:0 0 30px rgba(74,124,181,0.25);
@@ -734,13 +733,11 @@ body {
   <div class="chapter-label">第 五 章</div>
   <div class="chapter-title">故 人</div>
   <div class="rel-focus-hint">点击节点聚焦，点击茂润取消</div>
-  <div class="rel-scroll">
-    <div class="rel-wrap" id="relWrap">
-      <svg class="rel-line" id="relSvg"></svg>
-      <div class="rel-center-wrap" id="relCenterWrap">
-        <div class="rel-center" id="relCenter"><img src="photos/01.jpg" alt=""></div>
-        <div class="rel-center-label" id="relCenterLabel">郭茂润</div>
-      </div>
+  <div class="rel-wrap" id="relWrap">
+    <svg class="rel-line" id="relSvg"></svg>
+    <div class="rel-center-wrap" id="relCenterWrap">
+      <div class="rel-center" id="relCenter"><img src="photos/01.jpg" alt=""></div>
+      <div class="rel-center-label" id="relCenterLabel">郭茂润</div>
     </div>
   </div>
   <button class="add-rel-btn" onclick="openRelModal()">+ 添加关系</button>
@@ -1361,21 +1358,19 @@ function loadRelations() {
       cw.style.display = 'flex';
       if (data.length === 0) return;
       var allPeople = new Map();
-      allPeople.set('郭茂润', null);
+      allPeople.set('郭茂润', { x: 340, y: 250, isCenter: true });
       data.forEach(function(rel) {
         if (!allPeople.has(rel.person)) allPeople.set(rel.person, null);
         if (!allPeople.has(rel.name)) allPeople.set(rel.name, null);
       });
+      // 环形布局：茂润居中，其他人均分在圆环上
       var others = [];
       allPeople.forEach(function(v, k) { if (k !== '郭茂润') others.push(k); });
       others.sort();
-      var vw = 800, vh = 550, cx = 400, cy = 275;
-      var radius = Math.min(250, Math.max(180, others.length * 30));
-      svg.setAttribute('viewBox', '0 0 ' + vw + ' ' + vh);
-      allPeople.set('郭茂润', { x: cx, y: cy, isCenter: true });
+      var radius = Math.max(170, others.length * 22);
       others.forEach(function(name, i) {
         var angle = (i / others.length) * Math.PI * 2 - Math.PI / 2;
-        allPeople.set(name, { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius, isCenter: false });
+        allPeople.set(name, { x: 340 + Math.cos(angle) * radius, y: 250 + Math.sin(angle) * radius, isCenter: false });
       });
       // 渲染节点
       allPeople.forEach(function(pos, name) {
