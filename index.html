@@ -353,7 +353,7 @@ body {
 .add-letter-btn:hover { background:rgba(184,147,90,0.06); border-color:var(--gold); }
 
 /* 关系网 */
-.rel-wrap { position:relative; width:100%; max-width:680px; margin:0 auto; min-height:500px; display:flex; align-items:center; justify-content:center; }
+.rel-wrap { position:relative; width:100%; max-width:760px; margin:0 auto; min-height:580px; display:flex; align-items:center; justify-content:center; }
 .rel-center {
   width:90px; height:90px; border-radius:50%; overflow:hidden;
   border:3px solid var(--blue); box-shadow:0 0 30px rgba(74,124,181,0.25);
@@ -1358,7 +1358,7 @@ function loadRelations() {
       cw.style.display = 'flex';
       if (data.length === 0) return;
       var allPeople = new Map();
-      allPeople.set('郭茂润', { x: 340, y: 250, isCenter: true });
+      allPeople.set('郭茂润', { x: 380, y: 290, isCenter: true });
       data.forEach(function(rel) {
         if (!allPeople.has(rel.person)) allPeople.set(rel.person, null);
         if (!allPeople.has(rel.name)) allPeople.set(rel.name, null);
@@ -1367,10 +1367,10 @@ function loadRelations() {
       var others = [];
       allPeople.forEach(function(v, k) { if (k !== '郭茂润') others.push(k); });
       others.sort();
-      var radius = Math.max(170, others.length * 22);
+      var radius = Math.max(210, others.length * 26);
       others.forEach(function(name, i) {
         var angle = (i / others.length) * Math.PI * 2 - Math.PI / 2;
-        allPeople.set(name, { x: 340 + Math.cos(angle) * radius, y: 250 + Math.sin(angle) * radius, isCenter: false });
+        allPeople.set(name, { x: 380 + Math.cos(angle) * radius, y: 290 + Math.sin(angle) * radius, isCenter: false });
       });
       // 渲染节点
       allPeople.forEach(function(pos, name) {
@@ -1403,7 +1403,7 @@ function loadRelations() {
         svg.innerHTML += '<line data-from="' + esc(rel.person) + '" data-to="' + esc(rel.name) + '" x1="' + from.x + '" y1="' + from.y + '" x2="' + to.x + '" y2="' + to.y + '"/>';
         svg.innerHTML += '<text x="' + mx + '" y="' + my + '" text-anchor="middle" font-size="10" fill="#8a827c" font-family="Noto Sans SC,sans-serif" letter-spacing="1" class="rel-label">' + esc(rel.relation) + '</text>';
       });
-      svg.setAttribute('viewBox', '0 0 680 500');
+      svg.setAttribute('viewBox', '0 0 760 580');
       // 中心节点点击取消聚焦
       document.getElementById('relCenter').onclick = function() {
         relSelectedNode = null;
